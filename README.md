@@ -1,4 +1,6 @@
-https://filmot.com/channelsearch/Nativlang
+This was an experimental project to test out yt-dlp and the wayback machine to see how much of a deleted YouTube channel could be recovered. 
+
+https://filmot.com/channelsearch
 
 https://www.waybackyt.download/
 
@@ -9,3 +11,5 @@ https://jazzzny.me/waybackmachine-youtube-downloader/
 https://www.youtube.com/@roberteellis
 
 https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/
+
+https://www.youtube.com/channel/UCc8KnJCn0Kj5WDloLABql2w/videos

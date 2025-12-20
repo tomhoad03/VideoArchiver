@@ -4,6 +4,8 @@ import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new FileWriter("extracted_urls"));
+
         Files.walk(Paths.get("exports")).filter(Files::isRegularFile).forEach(file -> {
             try {
                 Files.lines(file.toAbsolutePath()).forEach(videoUrl -> {
@@ -17,17 +19,13 @@ public class Main {
 
                         // Write the successful url
                         if (exitCode == 0) {
-                            BufferedWriter writer = new BufferedWriter(new FileWriter("extracted_urls"));
                             writer.write(videoUrl);
                             writer.newLine();
+                            System.out.println("Exported " + videoUrl);
                         }
-                    } catch (Exception e) {
-                        System.out.println(e);
-                    }
+                    } catch (Exception ignored) {}
                 });
-            } catch (IOException e) {
-                System.out.println(e);
-            }
+            } catch (Exception ignored) {}
         });
     }
 
