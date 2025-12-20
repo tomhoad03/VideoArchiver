@@ -1,11 +1,10 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class Main {
-    private static final String YTDLP_PATH = Path.of("src/yt-dlp.exe").toAbsolutePath().toString();
+    private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
     private static final Path IMPORTED_URLS_PATH = Path.of("imported_urls").toAbsolutePath();
     private static final Path EXPORTED_URLS_PATH = Path.of("exported_urls");
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
