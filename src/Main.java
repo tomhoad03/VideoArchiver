@@ -1,22 +1,37 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        Files.lines(Path.of("urls")).forEach(video -> {
+        Files.walk(Paths.get("exports")).filter(Files::isRegularFile).forEach(file -> {
             try {
-                downloadVideo(video);
-            } catch (Exception e) {
+                Files.lines(file.toAbsolutePath()).forEach(videoUrl -> {
+                    try {
+                        // Create wayback url
+                        String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
+                        String waybackUrl = "https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/" + videoId;
+
+                        // Download the video
+                        int exitCode = downloadVideo(waybackUrl);
+
+                        // Write the successful url
+                        if (exitCode == 0) {
+                            BufferedWriter writer = new BufferedWriter(new FileWriter("extracted_urls"));
+                            writer.write(videoUrl);
+                            writer.newLine();
+                        }
+                    } catch (Exception e) {
+                        System.out.println(e);
+                    }
+                });
+            } catch (IOException e) {
                 System.out.println(e);
             }
         });
     }
 
-    private static void downloadVideo(String videoString) throws IOException, InterruptedException {
+    private static int downloadVideo(String videoString) throws IOException, InterruptedException {
         // Output directory
         String outputDir = "videos/%(title)s.%(ext)s";
 
@@ -32,7 +47,6 @@ public class Main {
         }
 
         // Download is finished
-        int exitCode = process.waitFor();
-        System.out.println("Exit code: " + exitCode);
+        return process.waitFor();
     }
 }
