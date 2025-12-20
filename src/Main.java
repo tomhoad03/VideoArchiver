@@ -16,6 +16,7 @@ public class Main {
      */
     public static void main(String[] args) throws Exception {
         downloadFromImportedUrls();
+        downloadVideo("www.youtube.com/watch?v=Bq-tjhfSLQA");
     }
 
     /**
