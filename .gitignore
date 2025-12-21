@@ -2,3 +2,6 @@ out/
 videos/
 .idea/
 VideoArchiver.iml
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe

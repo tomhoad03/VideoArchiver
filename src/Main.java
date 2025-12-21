@@ -2,6 +2,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
@@ -24,20 +26,27 @@ public class Main {
      * @throws Exception if a download fails
      */
     private static void downloadFromImportedUrls() throws Exception {
-        Files.lines(IMPORTED_URLS_PATH).forEach(videoUrl -> {
+        AtomicInteger count = new AtomicInteger();
+        HashSet<String> videoUrls = new HashSet<>();
+
+        Files.lines(IMPORTED_URLS_PATH).forEach(videoUrls::add);
+
+        for (String videoUrl : videoUrls) {
             try {
                 // Create wayback url
                 String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
                 String waybackUrl = ARCHIVE_URL + videoId;
 
                 // Download the video
+                System.out.println("[" + count.get() + "] Downloading " + videoId + "...");
                 int exitCode = downloadVideo(waybackUrl);
+                count.getAndIncrement();
 
                 // Write out the successful url
                 if (exitCode == 0)
                     Files.write(EXPORTED_URLS_PATH, (videoUrl + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
             } catch (Exception ignored) {}
-        });
+        }
     }
 
     /**
