@@ -2,6 +2,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,11 +33,16 @@ public class Main {
     private static void downloadFromImportedUrls() throws Exception {
         AtomicInteger count = new AtomicInteger();
         HashSet<String> videoUrls = new HashSet<>();
+        ArrayList<String> succeededVideoUrls = new ArrayList<>();
 
         // Get the list of files to download
         Files.lines(IS_DRY_RUN ? IMPORTED_URLS_PATH : EXPORTED_URLS_PATH).forEach(videoUrls::add);
 
-        for (String videoUrl : videoUrls) {
+        // Sort the video urls
+        ArrayList<String> uniqueVideoUrls = new ArrayList<>(videoUrls);
+        Collections.sort(uniqueVideoUrls);
+
+        for (String videoUrl : uniqueVideoUrls) {
             try {
                 // Create wayback url
                 String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
@@ -48,10 +55,13 @@ public class Main {
                 count.getAndIncrement();
 
                 // Write out the successful url
-                if (exitCode == 0 && IS_DRY_RUN)
-                    Files.write(EXPORTED_URLS_PATH, (videoUrl + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                if (exitCode == 0)
+                    succeededVideoUrls.add(videoUrl);
             } catch (Exception ignored) {}
         }
+
+        // Output the successful video urls
+        Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     /**

@@ -1,6 +1,6 @@
 This was an experimental project to test out yt-dlp and the wayback machine to see how much of a deleted YouTube channel could be recovered. 
 
-https://filmot.com/channelsearch
+https://filmot.com/channelsearch/roberteellis
 
 https://www.waybackyt.download/
 
