@@ -11,12 +11,15 @@ public class Main {
     private static final Path IMPORTED_URLS_PATH = Path.of("imported_urls").toAbsolutePath();
     private static final Path EXPORTED_URLS_PATH = Path.of("exported_urls");
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
-    private static final boolean IS_DRY_RUN = true;
+    private static boolean IS_DRY_RUN = true;
 
     /**
      * Main class for VideoArchiver
      */
     public static void main(String[] args) throws Exception {
+        String isDryRun = args[0];
+        IS_DRY_RUN = Boolean.parseBoolean(isDryRun);
+
         downloadFromImportedUrls();
     }
 
@@ -29,7 +32,8 @@ public class Main {
         AtomicInteger count = new AtomicInteger();
         HashSet<String> videoUrls = new HashSet<>();
 
-        Files.lines(IMPORTED_URLS_PATH).forEach(videoUrls::add);
+        // Get the list of files to download
+        Files.lines(IS_DRY_RUN ? IMPORTED_URLS_PATH : EXPORTED_URLS_PATH).forEach(videoUrls::add);
 
         for (String videoUrl : videoUrls) {
             try {
@@ -40,10 +44,11 @@ public class Main {
                 // Download the video
                 System.out.println("[" + count.get() + "] Downloading " + videoId + "...");
                 int exitCode = downloadVideo(waybackUrl);
+                System.out.println("Exit code: " + exitCode);
                 count.getAndIncrement();
 
                 // Write out the successful url
-                if (exitCode == 0)
+                if (exitCode == 0 && IS_DRY_RUN)
                     Files.write(EXPORTED_URLS_PATH, (videoUrl + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
             } catch (Exception ignored) {}
         }
