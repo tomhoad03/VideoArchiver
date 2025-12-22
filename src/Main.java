@@ -36,7 +36,7 @@ public class Main {
         ArrayList<String> succeededVideoUrls = new ArrayList<>();
 
         // Get the list of files to download
-        Files.lines(EXPORTED_URLS_PATH).forEach(videoUrls::add);
+        Files.lines(IS_DRY_RUN ? IMPORTED_URLS_PATH : EXPORTED_URLS_PATH).forEach(videoUrls::add);
 
         // Sort the video urls
         ArrayList<String> uniqueVideoUrls = new ArrayList<>(videoUrls);
