@@ -61,7 +61,8 @@ public class Main {
         }
 
         // Output the successful video urls
-        Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        if (IS_DRY_RUN)
+            Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     /**
