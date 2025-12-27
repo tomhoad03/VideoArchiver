@@ -14,15 +14,57 @@ public class Main {
     private static final Path EXPORTED_URLS_PATH = Path.of("exported_urls");
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
     private static boolean IS_DRY_RUN = true;
+    private static boolean IS_REMAINING_RUN = true;
 
     /**
      * Main class for VideoArchiver
      */
     public static void main(String[] args) throws Exception {
+        // Check if this is a dry run
         String isDryRun = args[0];
         IS_DRY_RUN = Boolean.parseBoolean(isDryRun);
 
-        downloadFromImportedUrls();
+        // Check if this is a remaining run
+        String isRemainingRun = args[0];
+        IS_REMAINING_RUN = Boolean.parseBoolean(isRemainingRun);
+
+        // Download the videos
+        downloadFromUrls(getVideoUrls());
+    }
+
+    /**
+     * @return the list of urls from the relevant file
+     */
+    private static ArrayList<String> getVideoUrls() throws IOException {
+        ArrayList<String> importedVideoUrls = getUniqueVideoUrls(IMPORTED_URLS_PATH);
+        ArrayList<String> exportedVideoUrls = getUniqueVideoUrls(EXPORTED_URLS_PATH);
+
+        // Dry run download all videos in imported_urls
+        if (IS_DRY_RUN)
+            return importedVideoUrls;
+
+        // Download all videos in exported_urls
+        if (!IS_REMAINING_RUN)
+            return exportedVideoUrls;
+
+        // Try to download all videos from imported_urls that failed the dry run
+        importedVideoUrls.removeAll(exportedVideoUrls);
+        return importedVideoUrls;
+    }
+
+    /**
+     * @return the list of unique urls from the relevant file
+     */
+    private static ArrayList<String> getUniqueVideoUrls(Path urls) throws IOException {
+        HashSet<String> videoUrls = new HashSet<>();
+
+        // Get the list of files to download
+        Files.lines(urls).forEach(videoUrls::add);
+
+        // Sort the video urls
+        ArrayList<String> uniqueVideoUrls = new ArrayList<>(videoUrls);
+        Collections.sort(uniqueVideoUrls);
+        return uniqueVideoUrls;
     }
 
     /**
@@ -30,19 +72,11 @@ public class Main {
      *
      * @throws Exception if a download fails
      */
-    private static void downloadFromImportedUrls() throws Exception {
+    private static void downloadFromUrls(ArrayList<String> videoUrls) throws Exception {
         AtomicInteger count = new AtomicInteger();
-        HashSet<String> videoUrls = new HashSet<>();
         ArrayList<String> succeededVideoUrls = new ArrayList<>();
 
-        // Get the list of files to download
-        Files.lines(IS_DRY_RUN ? IMPORTED_URLS_PATH : EXPORTED_URLS_PATH).forEach(videoUrls::add);
-
-        // Sort the video urls
-        ArrayList<String> uniqueVideoUrls = new ArrayList<>(videoUrls);
-        Collections.sort(uniqueVideoUrls);
-
-        for (String videoUrl : uniqueVideoUrls) {
+        for (String videoUrl : videoUrls) {
             try {
                 // Create wayback url
                 String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
@@ -61,8 +95,9 @@ public class Main {
         }
 
         // Output the successful video urls
-        if (IS_DRY_RUN)
+        if (IS_DRY_RUN && !IS_REMAINING_RUN)
             Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        else Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
     /**
