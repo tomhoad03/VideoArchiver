@@ -88,7 +88,7 @@ public class Main {
                 int exitCode = downloadVideo(waybackUrl1);
 
                 // Try alternative download
-                if (exitCode != 0) {
+                if (exitCode != 0 && (IS_REMAINING_RUN || IS_DRY_RUN)) {
                     String waybackUrl2 = ARCHIVE_URL_2 + videoUrl;
                     exitCode = downloadVideo(waybackUrl2);
                 }

@@ -5,3 +5,6 @@ VideoArchiver.iml
 ffmpeg.exe
 ffplay.exe
 ffprobe.exe
+*.mp4
+*exported_wayback_urls*
+*imported_wayback_urls*
