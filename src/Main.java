@@ -9,7 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
-    private static final String ARCHIVE_URL = "https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/";
+    private static final String ARCHIVE_URL_1 = "https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/";
+    private static final String ARCHIVE_URL_2 = "https://web.archive.org/web/20250000000000/";
     private static final Path IMPORTED_URLS_PATH = Path.of("imported_urls").toAbsolutePath();
     private static final Path EXPORTED_URLS_PATH = Path.of("exported_urls");
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
@@ -25,7 +26,7 @@ public class Main {
         IS_DRY_RUN = Boolean.parseBoolean(isDryRun);
 
         // Check if this is a remaining run
-        String isRemainingRun = args[0];
+        String isRemainingRun = args[1];
         IS_REMAINING_RUN = Boolean.parseBoolean(isRemainingRun);
 
         // Download the videos
@@ -80,11 +81,18 @@ public class Main {
             try {
                 // Create wayback url
                 String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
-                String waybackUrl = ARCHIVE_URL + videoId;
+                String waybackUrl1 = ARCHIVE_URL_1 + videoId;
 
                 // Download the video
                 System.out.println("[" + count.get() + "] Downloading " + videoId + "...");
-                int exitCode = downloadVideo(waybackUrl);
+                int exitCode = downloadVideo(waybackUrl1);
+
+                // Try alternative download
+                if (exitCode != 0) {
+                    String waybackUrl2 = ARCHIVE_URL_2 + videoUrl;
+                    exitCode = downloadVideo(waybackUrl2);
+                }
+
                 System.out.println("Exit code: " + exitCode);
                 count.getAndIncrement();
 
