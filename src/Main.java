@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Main {
     private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
     private static final String ARCHIVE_URL_1 = "https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/";
-    private static final String ARCHIVE_URL_2 = "https://web.archive.org/web/20260110000000/";
+    private static final String ARCHIVE_URL_2 = "http://web.archive.org/web/20260110000000/";
     private static final String ARCHIVE_URL_3 = "https://www.webcitation.org/query?url=";
     private static final String ARCHIVE_URL_4 = "https://megalodon.jp/?url=";
     private static final Path IMPORTED_URLS_PATH = Path.of("imported_urls.csv").toAbsolutePath();
@@ -90,7 +90,7 @@ public class Main {
                 int exitCode = downloadVideo(waybackUrl1);
 
                 // Try alternative download
-                if (exitCode != 0 && (IS_REMAINING_RUN || IS_DRY_RUN)) {
+                if (exitCode != 0) {
                     String waybackUrl2 = ARCHIVE_URL_2 + videoUrl;
                     exitCode = downloadVideo(waybackUrl2);
                 }
@@ -122,7 +122,7 @@ public class Main {
         String dryRunFlag = IS_DRY_RUN ? "--simulate" : "";
 
         // Run yt-dlp
-        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, dryRunFlag, "-f", "best", "--ignore-errors", videoString).start();
+        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, dryRunFlag, "-f", "best", "--ignore-errors", "--force-download-archive", videoString).start();
 
         // Read the output of the process
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
