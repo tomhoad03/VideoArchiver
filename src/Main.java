@@ -1,134 +1,129 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
-    private static final String ARCHIVE_URL_1 = "https://web.archive.org/web/2oe_/http://wayback-fakeurl.archive.org/yt/";
-    private static final String ARCHIVE_URL_2 = "http://web.archive.org/web/20260110000000/";
-    private static final String ARCHIVE_URL_3 = "https://www.webcitation.org/query?url=";
-    private static final String ARCHIVE_URL_4 = "https://megalodon.jp/?url=";
     private static final Path IMPORTED_URLS_PATH = Path.of("imported_urls.csv").toAbsolutePath();
-    private static final Path EXPORTED_URLS_PATH = Path.of("exported_urls.csv");
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
     private static boolean IS_DRY_RUN = true;
-    private static boolean IS_REMAINING_RUN = true;
 
     /**
      * Main class for VideoArchiver
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException, InterruptedException {
         // Check if this is a dry run
         String isDryRun = args[0];
         IS_DRY_RUN = Boolean.parseBoolean(isDryRun);
 
-        // Check if this is a remaining run
-        String isRemainingRun = args[1];
-        IS_REMAINING_RUN = Boolean.parseBoolean(isRemainingRun);
+        // Get the list of videos to download
+        List<Video> videos = getVideos();
+
+        // If downloading, filter out files that cannot be downloaded
+        List<Video> filteredVideos = videos.stream()
+                .filter(video -> IS_DRY_RUN || (video.getSucceeded() == true && video.getIgnore() == false))
+                .toList();
 
         // Download the videos
-        downloadFromUrls(getVideoUrls());
+        downloadFromVideos(filteredVideos);
     }
 
     /**
-     * @return the list of urls from the relevant file
+     * @return the list of videos
      */
-    private static ArrayList<String> getVideoUrls() throws IOException {
-        ArrayList<String> importedVideoUrls = getUniqueVideoUrls(IMPORTED_URLS_PATH);
-        ArrayList<String> exportedVideoUrls = getUniqueVideoUrls(EXPORTED_URLS_PATH);
-
-        // Dry run download all videos in imported_urls
-        if (IS_DRY_RUN)
-            return importedVideoUrls;
-
-        // Download all videos in exported_urls
-        if (!IS_REMAINING_RUN)
-            return exportedVideoUrls;
-
-        // Try to download all videos from imported_urls that failed the dry run
-        importedVideoUrls.removeAll(exportedVideoUrls);
-        return importedVideoUrls;
-    }
-
-    /**
-     * @return the list of unique urls from the relevant file
-     */
-    private static ArrayList<String> getUniqueVideoUrls(Path urls) throws IOException {
-        HashSet<String> videoUrls = new HashSet<>();
+    private static List<Video> getVideos() throws IOException {
+        List<Video> videos = new ArrayList<>();
 
         // Get the list of files to download
-        Files.lines(urls).forEach(videoUrls::add);
+        Files.lines(IMPORTED_URLS_PATH).forEach(row -> {
+            String[] split = row.split(",");
 
-        // Sort the video urls
-        ArrayList<String> uniqueVideoUrls = new ArrayList<>(videoUrls);
-        Collections.sort(uniqueVideoUrls);
-        return uniqueVideoUrls;
+            // Read video details from the csv
+            Video video = new Video(split[0],
+                    split.length > 2 && Boolean.parseBoolean(split[2]),
+                    split.length > 5 && Boolean.parseBoolean(split[5]));
+
+            // Add video to the list
+            videos.add(video);
+        });
+
+        return videos;
     }
 
     /**
-     * Download all the videos from the imported_urls file
-     *
-     * @throws Exception if a download fails
+     * Download all the videos
      */
-    private static void downloadFromUrls(ArrayList<String> videoUrls) throws Exception {
+    private static void downloadFromVideos(List<Video> videos) throws IOException, InterruptedException {
         AtomicInteger count = new AtomicInteger();
-        ArrayList<String> succeededVideoUrls = new ArrayList<>();
+        List<Video> newVideos = new ArrayList<>();
 
-        for (String videoUrl : videoUrls) {
-            try {
-                // Create wayback url
-                String videoId = videoUrl.substring(videoUrl.indexOf("?v=") + 3);
-                String waybackUrl1 = ARCHIVE_URL_1 + videoId;
+        for (Video video : videos) {
+            // Download the video
+            System.out.println("[" + count.get() + "] Downloading " + video.getId() + "...");
 
-                // Download the video
-                System.out.println("[" + count.get() + "] Downloading " + videoId + "...");
-                int exitCode = downloadVideo(waybackUrl1);
+            for (String waybackUrl : video.getWaybackUrls()) {
+                Video newVideo = downloadVideo(video, waybackUrl);
 
-                // Try alternative download
-                if (exitCode != 0) {
-                    String waybackUrl2 = ARCHIVE_URL_2 + videoUrl;
-                    exitCode = downloadVideo(waybackUrl2);
+                if (newVideo.getExitCode() == 0) {
+                    video.setSucceeded(true);
+                    video.setSucceededUrl(waybackUrl);
+                    video.setExitCode(0);
+                    break;
                 }
+            }
 
-                System.out.println("Exit code: " + exitCode);
-                count.getAndIncrement();
-
-                // Write out the successful url
-                if (exitCode == 0)
-                    succeededVideoUrls.add(videoUrl);
-            } catch (Exception ignored) {}
+            System.out.println("Exit code: " + video.getExitCode());
+            count.getAndIncrement();
+            newVideos.add(video);
         }
 
-        // Output the successful video urls
-        if (IS_DRY_RUN && !IS_REMAINING_RUN)
-            Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        else Files.write(EXPORTED_URLS_PATH, succeededVideoUrls, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        // Don't update list of files if actually downloading
+        if (!IS_DRY_RUN) {
+            return;
+        }
+
+        // Output the video back to the file
+        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(IMPORTED_URLS_PATH)) {
+            bufferedWriter.write("");
+
+            for (Video video : newVideos) {
+                bufferedWriter.append(video.toString()).append("\n");
+            }
+
+            bufferedWriter.flush();
+        }
     }
 
     /**
      * Download a single video using yt-dlp
-     *
-     * @param videoString the string of the video to download
-     * @return The exit code from downloading a video
-     * @throws Exception if the download fails
      */
-    private static int downloadVideo(String videoString) throws Exception {
+    private static Video downloadVideo(Video video, String waybackUrl) throws IOException, InterruptedException {
         // Dry run condition
         String dryRunFlag = IS_DRY_RUN ? "--simulate" : "";
 
         // Run yt-dlp
-        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, dryRunFlag, "-f", "best", "--ignore-errors", "--force-download-archive", videoString).start();
+        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, dryRunFlag, "-f", "best", "--ignore-errors", "--force-download-archive", waybackUrl).start();
 
         // Read the output of the process
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         reader.lines().forEach(System.out::println);
 
         // Download is finished, return status code
-        return process.waitFor();
+        video.setExitCode(process.waitFor());
+
+        // Get the video name
+        process = new ProcessBuilder(YTDLP_PATH, "--simulate", "--print", "\"%(title)s\"", video.getUrl()).start();
+        reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        reader.lines().forEach(line -> {
+            if (!line.contains("java.util.stream.ReferencePipeline")) {
+                video.setName(line);
+            }
+        });
+
+        // Return the video
+        return video;
     }
 }
