@@ -2,7 +2,6 @@ import java.util.List;
 
 public final class Video {
     private final String id;
-    private final String url;
     private String name;
     private Boolean succeeded;
     private String succeededUrl;
@@ -14,22 +13,17 @@ public final class Video {
     private static final String ARCHIVE_URL_3 = "https://www.webcitation.org/query?url=";
     private static final String ARCHIVE_URL_4 = "https://megalodon.jp/?url=";
 
-    public Video(String url, Boolean succeeded, Boolean ignore) {
-        this.id = url.substring(url.indexOf("?v=") + 3);
-        this.url = url;
-        this.name = "null";
+    public Video(String id, String name, Boolean succeeded, String succeededUrl, Boolean ignore) {
+        this.id = id;
+        this.name = name;
         this.succeeded = succeeded;
-        this.succeededUrl = "null";
+        this.succeededUrl = succeededUrl;
         this.exitCode = 1;
         this.ignore = ignore;
     }
 
     public String getId() {
         return id;
-    }
-
-    public String getUrl() {
-        return url;
     }
 
     public Boolean getSucceeded() {
@@ -66,6 +60,6 @@ public final class Video {
 
     @Override
     public String toString() {
-        return url + "," + name + "," + succeeded + "," + succeededUrl + "," + exitCode + "," +  ignore;
+        return id + "," + name + "," + succeeded + "," + succeededUrl + "," + ignore;
     }
 }
