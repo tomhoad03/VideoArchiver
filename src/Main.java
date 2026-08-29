@@ -8,19 +8,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     private static final String YTDLP_PATH = Path.of("yt-dlp.exe").toAbsolutePath().toString();
-    private static final String IMPORTED_URLS_PATH = "imported/imported_urls_%s.csv";
+    private static final String IMPORTED_URLS_PATH = "targeted/targeted_urls_%s.csv";
     private static final String EXPORTED_VIDEOS_PATH = "videos/%(title)s.%(ext)s";
-    private static boolean IS_DRY_RUN = true;
 
     /**
      * Main class for VideoArchiver
      */
     public static void main(String[] args) throws IOException, InterruptedException {
-        // Check if this is a dry run
-        IS_DRY_RUN = Boolean.parseBoolean(args[0]);
-
-        // Test 100 videos at a time
-        for (int i = 1; i < 12; i++) {
+        for (int i = 0; i <= 0; i++) {
             // Get the list of videos to download
             Path urlsPath = Path.of(IMPORTED_URLS_PATH.formatted(i));
             List<Video> videos = getVideos(urlsPath.toAbsolutePath());
@@ -41,11 +36,7 @@ public class Main {
             String[] split = row.split(",");
 
             // Read video details from the csv
-            Video video = new Video(split[0],
-                    split.length > 1 ? split[1] : "null",
-                    split.length > 2 && Boolean.parseBoolean(split[2]),
-                    split.length > 3 ? split[3] : "null",
-                    split.length > 5 && Boolean.parseBoolean(split[5]));
+            Video video = new Video(split[0], split[1], split.length > 2 && Boolean.parseBoolean(split[2]));
 
             // Add video to the list
             videos.add(video);
@@ -58,17 +49,12 @@ public class Main {
      * Download all the videos
      */
     private static void downloadFromVideos(List<Video> videos, Path exportedVideosPath, int base) throws IOException, InterruptedException {
-        AtomicInteger count = new AtomicInteger((base * 100) - 99);
+        AtomicInteger count = new AtomicInteger(Math.max(0, (base * 100) - 99));
 
         for (Video video : videos) {
-            // Ignore downloading if it cannot be downloaded
-            if (!IS_DRY_RUN && (!video.getSucceeded() || video.getIgnore())) {
-                count.getAndIncrement();
-                continue;
-            }
 
             // Download the video
-            System.out.println("[" + count.get() + " - " + LocalTime.now() + "] Downloading " + video.getId() + "...");
+            System.out.println("[" + count.get() + " - " + LocalTime.now() + "] Downloading " + video.getUrl() + "...");
 
             for (String waybackUrl : video.getWaybackUrls()) {
                 Video newVideo = downloadVideo(video, waybackUrl);
@@ -77,7 +63,6 @@ public class Main {
                 // Download succeeded
                 if (newVideo.getExitCode() == 0) {
                     video.setSucceeded(true);
-                    video.setSucceededUrl(waybackUrl);
                     break;
                 }
             }
@@ -102,28 +87,15 @@ public class Main {
      * Download a single video using yt-dlp
      */
     private static Video downloadVideo(Video video, String waybackUrl) throws IOException, InterruptedException {
-        // Dry run condition
-        //String dryRunFlag = IS_DRY_RUN ? "--simulate" : "";
-
         // Run yt-dlp
-        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, "--simulate", "-f", "best", "--ignore-errors", "--force-download-archive", waybackUrl).start();
+        Process process = new ProcessBuilder(YTDLP_PATH, "-o", EXPORTED_VIDEOS_PATH, "-f", "best", "--ignore-errors", "--force-download-archive", waybackUrl).start();
 
         // Read the output of the process
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
         reader.lines().forEach(System.out::println);
 
-        // Download is finished, return status code
+        // Download is finished, set status code
         video.setExitCode(process.waitFor());
-
-        // Get the video name
-        process = new ProcessBuilder(YTDLP_PATH, "--simulate", "--print", "\"%(title)s\"", waybackUrl).start();
-        reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        reader.lines().forEach(line -> {
-            if (!line.contains("java.util.stream.ReferencePipeline")) {
-                System.out.println("Found video to download: " + line);
-                video.setName(line.replace(",", ""));
-            }
-        });
 
         // Return the video
         return video;
